@@ -17,26 +17,29 @@
 using namespace std;
 
 int countOfProcesses;
-const int sender = 6;
-const int receiver = 3;
+int countOfSkippedProcesses;
+int sender = 0;
+int receiver = 0;
 
+void calculateCountOfSkippedProcesses();
 bool ifProcessWillBeScipped(int countOfSkippedProcesses, int indexOfProcess);
+
 
 int main(int* argc, char** argv)
 {
 	int value = 0;
 	MPI_Status status;
 	int currentProcess;
-	if (sender == receiver) {
+	/*if (sender == receiver) {
 		cout << "You cannot send value by some process to itself!" << endl;
 		return 0;
-	}
+	}*/
 
 	MPI_Init(argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &currentProcess);
 	MPI_Comm_size(MPI_COMM_WORLD, &countOfProcesses);
 
-	const int countOfSkippedProcesses = receiver > sender ?
+	countOfSkippedProcesses = receiver > sender ?
 		countOfProcesses - (receiver - sender) - 1 :
 		(sender - receiver) - 1;
 
@@ -51,7 +54,7 @@ int main(int* argc, char** argv)
 	}
 
 	// PART 1: from one to another
-	value = 4;
+	/*value = 4;
 	if (currentProcess == sender) {
 		MPI_Send(&value, 1, MPI_INT, (currentProcess == countOfProcesses - 1) ? 0 : currentProcess + 1, 0, MPI_COMM_WORLD);
 	}
@@ -65,24 +68,41 @@ int main(int* argc, char** argv)
 			}
 
 		}
-	}
+	}*/
 	
 
 	//PART 2: form all to all
-	//value = currentProcess;
+	// i from 0 to count
+	// j = i - 1 || 0
+	sender = currentProcess;
+	for (int i = 0; i < countOfProcesses; i++) {
+		receiver = i == 0 ? countOfProcesses - 1 : i - 1;
+		value = i;
+		if (currentProcess == i) {
+			calculateCountOfSkippedProcesses();
+			MPI_Send(&value, 1, MPI_INT, (currentProcess == countOfProcesses - 1) ? 0 : currentProcess + 1, 0, MPI_COMM_WORLD);
+		}
+		else {	
+			MPI_Recv(&value, 1, MPI_INT, (currentProcess == 0) ? countOfProcesses - 1 : currentProcess - 1, 0, MPI_COMM_WORLD, &status);
+			cout << "Process " << currentProcess << " got " << value << endl;
 
-	//currentProcess == 0 ? receiveValue(countOfProcesses - 1) : receiveValue(currentProcess - 1);
-	//sendValue(currentProcess);
+			if (currentProcess != receiver) {
+				MPI_Send(&value, 1, MPI_INT, (currentProcess == countOfProcesses - 1) ? 0 : currentProcess + 1, 0, MPI_COMM_WORLD);
+			}
 
-	///*for (int i = 0; i < countOfProcesses; i++) {
-	//	if (i == currentProcess) {
-	//		continue;
-	//	}
-	//}
-	//*/	
+		}
+	}
+
 
 
 	MPI_Finalize();
+}
+
+
+void calculateCountOfSkippedProcesses() {
+	countOfSkippedProcesses = receiver > sender ?
+		countOfProcesses - (receiver - sender) - 1 :
+		(sender - receiver) - 1;
 }
 
 bool ifProcessWillBeScipped(int countOfSkippedProcesses, int indexOfProcess)
